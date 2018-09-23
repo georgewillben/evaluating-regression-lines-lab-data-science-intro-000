@@ -1,0 +1,2095 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Evaluating Regression Lines Lab"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Introduction"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In the previous lesson, we learned to evaluate how well a regression line estimated our actual data.  In this lab, we will turn these formulas into code.  In doing so, we'll build lots of useful functions for both calculating and displaying our errors for a given regression line and dataset."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "> In moving through this lab, we'll access to the functions that we previously built out to plot our data, available in the [graph](https://github.com/learn-co-curriculum/evaluating-regression-lines-lab/blob/master/graph.py) here."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Determining Quality"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In the file, `movie_data.py` you will find movie data written as a python list of dictionaries, with each dictionary representing a movie.  The movies are derived from the first 30 entries from the dataset containing 538 movies [provided here](https://raw.githubusercontent.com/fivethirtyeight/data/master/bechdel/movies.csv)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "30"
+      ]
+     },
+     "execution_count": 1,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from movie_data import movies \n",
+    "len(movies)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "> Press shift + enter"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'budget': 13000000, 'domgross': 25682380.0, 'title': '21 &amp; Over'}"
+      ]
+     },
+     "execution_count": 2,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "movies[0]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "13.0"
+      ]
+     },
+     "execution_count": 3,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "movies[0]['budget']/1000000"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The numbers are in millions, so we will simplify things by dividing everything by a million"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'title': '21 &amp; Over', 'budget': 13.0, 'domgross': 26.0}"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "scaled_movies = list(map(lambda movie: {'title': movie['title'], 'budget': round(movie['budget']/1000000, 0), 'domgross': round(movie['domgross']/1000000, 0)}, movies))\n",
+    "scaled_movies[0]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "collapsed": true
+   },
+   "source": [
+    "Note that, like in previous lessons, the budget is our explanatory value and the revenue is our dependent variable.  Here revenue is represented as the key `domgross`.  \n",
+    "\n",
+    "#### Plotting our data\n",
+    "\n",
+    "Let's write the code to plot this data set.\n",
+    "\n",
+    "As a first task, convert the budget values of our `scaled_movies` to `x_values`, and convert the domgross values of the `scaled_movies` to `y_values`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[13.0,\n",
+       " 46.0,\n",
+       " 20.0,\n",
+       " 61.0,\n",
+       " 40.0,\n",
+       " 225.0,\n",
+       " 92.0,\n",
+       " 12.0,\n",
+       " 13.0,\n",
+       " 130.0,\n",
+       " 40.0,\n",
+       " 25.0,\n",
+       " 50.0,\n",
+       " 18.0,\n",
+       " 55.0,\n",
+       " 30.0,\n",
+       " 78.0,\n",
+       " 76.0,\n",
+       " 6.0,\n",
+       " 120.0,\n",
+       " 110.0,\n",
+       " 100.0,\n",
+       " 40.0,\n",
+       " 70.0,\n",
+       " 17.0,\n",
+       " 160.0,\n",
+       " 150.0,\n",
+       " 140.0,\n",
+       " 60.0,\n",
+       " 30.0]"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "\n",
+    "x_values = list(map(lambda movie: movie['budget'], scaled_movies))\n",
+    "y_values = list(map(lambda movie: movie['domgross'], scaled_movies))\n",
+    "x_values"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "13.0"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "x_values and x_values[0] # 13.0"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "26.0"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "y_values and y_values[0] # 26.0"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Assign a variable called `titles` equal to the titles of the movies."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "titles = list(map(lambda movie: movie['title'], scaled_movies))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'21 &amp; Over'"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "titles and titles[0]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Great! Now we have the data necessary to make a trace of our data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<script>requirejs.config({paths: { 'plotly': ['https://cdn.plot.ly/plotly-latest.min']},});if(!window.Plotly) {{require(['plotly'],function(plotly) {window.Plotly=plotly;});}}</script>"
+      ],
+      "text/vnd.plotly.v1+html": [
+       "<script>requirejs.config({paths: { 'plotly': ['https://cdn.plot.ly/plotly-latest.min']},});if(!window.Plotly) {{require(['plotly'],function(plotly) {window.Plotly=plotly;});}}</script>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "application/vnd.plotly.v1+json": {
+       "data": [
+        {
+         "mode": "markers",
+         "name": "movie data",
+         "text": [
+          "21 &amp; Over",
+          "Dredd 3D",
+          "12 Years a Slave",
+          "2 Guns",
+          "42",
+          "47 Ronin",
+          "A Good Day to Die Hard",
+          "About Time",
+          "Admission",
+          "After Earth",
+          "American Hustle",
+          "August: Osage County",
+          "Beautiful Creatures",
+          "Blue Jasmine",
+          "Captain Phillips",
+          "Carrie",
+          "Cloudy with a Chance of Meatballs 2",
+          "Despicable Me 2",
+          "Don Jon",
+          "Elysium",
+          "Ender&#39;s Game",
+          "Epic",
+          "Escape from Planet Earth",
+          "Escape Plan",
+          "Evil Dead",
+          "Fast and Furious 6",
+          "Frozen",
+          "G.I. Joe: Retaliation",
+          "Gangster Squad",
+          "Gloria"
+         ],
+         "type": "scatter",
+         "uid": "0ca1d0e6-be47-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          46,
+          20,
+          61,
+          40,
+          225,
+          92,
+          12,
+          13,
+          130,
+          40,
+          25,
+          50,
+          18,
+          55,
+          30,
+          78,
+          76,
+          6,
+          120,
+          110,
+          100,
+          40,
+          70,
+          17,
+          160,
+          150,
+          140,
+          60,
+          30
+         ],
+         "y": [
+          26,
+          13,
+          53,
+          76,
+          95,
+          38,
+          67,
+          15,
+          18,
+          61,
+          148,
+          37,
+          19,
+          33,
+          107,
+          35,
+          120,
+          368,
+          24,
+          93,
+          62,
+          108,
+          57,
+          25,
+          54,
+          239,
+          393,
+          123,
+          46,
+          4
+         ]
+        }
+       ],
+       "layout": {}
+      },
+      "text/html": [
+       "<div id=\"58e8e09e-2771-4814-bf55-e944da7a2500\" style=\"height: 525px; width: 100%;\" class=\"plotly-graph-div\"></div><script type=\"text/javascript\">require([\"plotly\"], function(Plotly) { window.PLOTLYENV=window.PLOTLYENV || {};window.PLOTLYENV.BASE_URL=\"https://plot.ly\";Plotly.newPlot(\"58e8e09e-2771-4814-bf55-e944da7a2500\", [{\"mode\": \"markers\", \"name\": \"movie data\", \"text\": [\"21 &amp; Over\", \"Dredd 3D\", \"12 Years a Slave\", \"2 Guns\", \"42\", \"47 Ronin\", \"A Good Day to Die Hard\", \"About Time\", \"Admission\", \"After Earth\", \"American Hustle\", \"August: Osage County\", \"Beautiful Creatures\", \"Blue Jasmine\", \"Captain Phillips\", \"Carrie\", \"Cloudy with a Chance of Meatballs 2\", \"Despicable Me 2\", \"Don Jon\", \"Elysium\", \"Ender&#39;s Game\", \"Epic\", \"Escape from Planet Earth\", \"Escape Plan\", \"Evil Dead\", \"Fast and Furious 6\", \"Frozen\", \"G.I. Joe: Retaliation\", \"Gangster Squad\", \"Gloria\"], \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [26.0, 13.0, 53.0, 76.0, 95.0, 38.0, 67.0, 15.0, 18.0, 61.0, 148.0, 37.0, 19.0, 33.0, 107.0, 35.0, 120.0, 368.0, 24.0, 93.0, 62.0, 108.0, 57.0, 25.0, 54.0, 239.0, 393.0, 123.0, 46.0, 4.0], \"type\": \"scatter\", \"uid\": \"0ccd4b22-be47-11e8-95c1-0242ac11000e\"}], {}, {\"showLink\": true, \"linkText\": \"Export to plot.ly\"})});</script>"
+      ],
+      "text/vnd.plotly.v1+html": [
+       "<div id=\"58e8e09e-2771-4814-bf55-e944da7a2500\" style=\"height: 525px; width: 100%;\" class=\"plotly-graph-div\"></div><script type=\"text/javascript\">require([\"plotly\"], function(Plotly) { window.PLOTLYENV=window.PLOTLYENV || {};window.PLOTLYENV.BASE_URL=\"https://plot.ly\";Plotly.newPlot(\"58e8e09e-2771-4814-bf55-e944da7a2500\", [{\"mode\": \"markers\", \"name\": \"movie data\", \"text\": [\"21 &amp; Over\", \"Dredd 3D\", \"12 Years a Slave\", \"2 Guns\", \"42\", \"47 Ronin\", \"A Good Day to Die Hard\", \"About Time\", \"Admission\", \"After Earth\", \"American Hustle\", \"August: Osage County\", \"Beautiful Creatures\", \"Blue Jasmine\", \"Captain Phillips\", \"Carrie\", \"Cloudy with a Chance of Meatballs 2\", \"Despicable Me 2\", \"Don Jon\", \"Elysium\", \"Ender&#39;s Game\", \"Epic\", \"Escape from Planet Earth\", \"Escape Plan\", \"Evil Dead\", \"Fast and Furious 6\", \"Frozen\", \"G.I. Joe: Retaliation\", \"Gangster Squad\", \"Gloria\"], \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [26.0, 13.0, 53.0, 76.0, 95.0, 38.0, 67.0, 15.0, 18.0, 61.0, 148.0, 37.0, 19.0, 33.0, 107.0, 35.0, 120.0, 368.0, 24.0, 93.0, 62.0, 108.0, 57.0, 25.0, 54.0, 239.0, 393.0, 123.0, 46.0, 4.0], \"type\": \"scatter\", \"uid\": \"0ccd4b22-be47-11e8-95c1-0242ac11000e\"}], {}, {\"showLink\": true, \"linkText\": \"Export to plot.ly\"})});</script>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from plotly.offline import iplot, init_notebook_mode\n",
+    "init_notebook_mode(connected=True)\n",
+    "from graph import trace_values, plot\n",
+    "\n",
+    "movies_trace = trace_values(x_values, y_values, text=titles, name='movie data')\n",
+    "\n",
+    "plot([movies_trace])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Plotting a regression line"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now let's add a regression line to make a prediction of output (revenue) based on an input (the budget).  We'll use the following regression formula:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "* $\\overline{y} = \\overline{m} x + \\overline{b}$, with $\\overline{m} = 1.7$, and $\\overline{b} = 10$. \n",
+    "\n",
+    "\n",
+    "* $\\overline{y} = 1.7x + 10$\n",
+    "\n",
+    "Write a function called `regression_formula` that calculates our $\\overline{y}$ for any provided value of $x$. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def regression_formula(x):\n",
+    "    return 1.7 * x + 10"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Check to see that the regression formula generates the correct outputs."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "435.0"
+      ]
+     },
+     "execution_count": 16,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "regression_formula(100) # 180.0\n",
+    "regression_formula(250) # 435.0"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let's plot the data as well as the regression line to get a sense of what we are looking at."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 85,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<script>requirejs.config({paths: { 'plotly': ['https://cdn.plot.ly/plotly-latest.min']},});if(!window.Plotly) {{require(['plotly'],function(plotly) {window.Plotly=plotly;});}}</script>"
+      ],
+      "text/vnd.plotly.v1+html": [
+       "<script>requirejs.config({paths: { 'plotly': ['https://cdn.plot.ly/plotly-latest.min']},});if(!window.Plotly) {{require(['plotly'],function(plotly) {window.Plotly=plotly;});}}</script>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "application/vnd.plotly.v1+json": {
+       "data": [
+        {
+         "mode": "markers",
+         "name": "movie data",
+         "text": [
+          "21 &amp; Over",
+          "Dredd 3D",
+          "12 Years a Slave",
+          "2 Guns",
+          "42",
+          "47 Ronin",
+          "A Good Day to Die Hard",
+          "About Time",
+          "Admission",
+          "After Earth",
+          "American Hustle",
+          "August: Osage County",
+          "Beautiful Creatures",
+          "Blue Jasmine",
+          "Captain Phillips",
+          "Carrie",
+          "Cloudy with a Chance of Meatballs 2",
+          "Despicable Me 2",
+          "Don Jon",
+          "Elysium",
+          "Ender&#39;s Game",
+          "Epic",
+          "Escape from Planet Earth",
+          "Escape Plan",
+          "Evil Dead",
+          "Fast and Furious 6",
+          "Frozen",
+          "G.I. Joe: Retaliation",
+          "Gangster Squad",
+          "Gloria"
+         ],
+         "type": "scatter",
+         "uid": "d57aa5e0-be4e-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          46,
+          20,
+          61,
+          40,
+          225,
+          92,
+          12,
+          13,
+          130,
+          40,
+          25,
+          50,
+          18,
+          55,
+          30,
+          78,
+          76,
+          6,
+          120,
+          110,
+          100,
+          40,
+          70,
+          17,
+          160,
+          150,
+          140,
+          60,
+          30
+         ],
+         "y": [
+          26,
+          13,
+          53,
+          76,
+          95,
+          38,
+          67,
+          15,
+          18,
+          61,
+          148,
+          37,
+          19,
+          33,
+          107,
+          35,
+          120,
+          368,
+          24,
+          93,
+          62,
+          108,
+          57,
+          25,
+          54,
+          239,
+          393,
+          123,
+          46,
+          4
+         ]
+        },
+        {
+         "mode": "lines",
+         "name": "estimated revenue",
+         "type": "scatter",
+         "uid": "d57aa9e6-be4e-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          46,
+          20,
+          61,
+          40,
+          225,
+          92,
+          12,
+          13,
+          130,
+          40,
+          25,
+          50,
+          18,
+          55,
+          30,
+          78,
+          76,
+          6,
+          120,
+          110,
+          100,
+          40,
+          70,
+          17,
+          160,
+          150,
+          140,
+          60,
+          30
+         ],
+         "y": [
+          32.099999999999994,
+          88.2,
+          44,
+          113.7,
+          78,
+          392.5,
+          166.4,
+          30.4,
+          32.099999999999994,
+          231,
+          78,
+          52.5,
+          95,
+          40.599999999999994,
+          103.5,
+          61,
+          142.6,
+          139.2,
+          20.2,
+          214,
+          197,
+          180,
+          78,
+          129,
+          38.9,
+          282,
+          265,
+          248,
+          112,
+          61
+         ]
+        }
+       ],
+       "layout": {}
+      },
+      "text/html": [
+       "<div id=\"4bbf0614-cbc4-414f-bd0c-4f75201fc8ac\" style=\"height: 525px; width: 100%;\" class=\"plotly-graph-div\"></div><script type=\"text/javascript\">require([\"plotly\"], function(Plotly) { window.PLOTLYENV=window.PLOTLYENV || {};window.PLOTLYENV.BASE_URL=\"https://plot.ly\";Plotly.newPlot(\"4bbf0614-cbc4-414f-bd0c-4f75201fc8ac\", [{\"mode\": \"markers\", \"name\": \"movie data\", \"text\": [\"21 &amp; Over\", \"Dredd 3D\", \"12 Years a Slave\", \"2 Guns\", \"42\", \"47 Ronin\", \"A Good Day to Die Hard\", \"About Time\", \"Admission\", \"After Earth\", \"American Hustle\", \"August: Osage County\", \"Beautiful Creatures\", \"Blue Jasmine\", \"Captain Phillips\", \"Carrie\", \"Cloudy with a Chance of Meatballs 2\", \"Despicable Me 2\", \"Don Jon\", \"Elysium\", \"Ender&#39;s Game\", \"Epic\", \"Escape from Planet Earth\", \"Escape Plan\", \"Evil Dead\", \"Fast and Furious 6\", \"Frozen\", \"G.I. Joe: Retaliation\", \"Gangster Squad\", \"Gloria\"], \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [26.0, 13.0, 53.0, 76.0, 95.0, 38.0, 67.0, 15.0, 18.0, 61.0, 148.0, 37.0, 19.0, 33.0, 107.0, 35.0, 120.0, 368.0, 24.0, 93.0, 62.0, 108.0, 57.0, 25.0, 54.0, 239.0, 393.0, 123.0, 46.0, 4.0], \"type\": \"scatter\", \"uid\": \"d581c668-be4e-11e8-95c1-0242ac11000e\"}, {\"mode\": \"lines\", \"name\": \"estimated revenue\", \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [32.099999999999994, 88.2, 44.0, 113.7, 78.0, 392.5, 166.4, 30.4, 32.099999999999994, 231.0, 78.0, 52.5, 95.0, 40.599999999999994, 103.5, 61.0, 142.6, 139.2, 20.2, 214.0, 197.0, 180.0, 78.0, 129.0, 38.9, 282.0, 265.0, 248.0, 112.0, 61.0], \"type\": \"scatter\", \"uid\": \"d581cad2-be4e-11e8-95c1-0242ac11000e\"}], {}, {\"showLink\": true, \"linkText\": \"Export to plot.ly\"})});</script>"
+      ],
+      "text/vnd.plotly.v1+html": [
+       "<div id=\"4bbf0614-cbc4-414f-bd0c-4f75201fc8ac\" style=\"height: 525px; width: 100%;\" class=\"plotly-graph-div\"></div><script type=\"text/javascript\">require([\"plotly\"], function(Plotly) { window.PLOTLYENV=window.PLOTLYENV || {};window.PLOTLYENV.BASE_URL=\"https://plot.ly\";Plotly.newPlot(\"4bbf0614-cbc4-414f-bd0c-4f75201fc8ac\", [{\"mode\": \"markers\", \"name\": \"movie data\", \"text\": [\"21 &amp; Over\", \"Dredd 3D\", \"12 Years a Slave\", \"2 Guns\", \"42\", \"47 Ronin\", \"A Good Day to Die Hard\", \"About Time\", \"Admission\", \"After Earth\", \"American Hustle\", \"August: Osage County\", \"Beautiful Creatures\", \"Blue Jasmine\", \"Captain Phillips\", \"Carrie\", \"Cloudy with a Chance of Meatballs 2\", \"Despicable Me 2\", \"Don Jon\", \"Elysium\", \"Ender&#39;s Game\", \"Epic\", \"Escape from Planet Earth\", \"Escape Plan\", \"Evil Dead\", \"Fast and Furious 6\", \"Frozen\", \"G.I. Joe: Retaliation\", \"Gangster Squad\", \"Gloria\"], \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [26.0, 13.0, 53.0, 76.0, 95.0, 38.0, 67.0, 15.0, 18.0, 61.0, 148.0, 37.0, 19.0, 33.0, 107.0, 35.0, 120.0, 368.0, 24.0, 93.0, 62.0, 108.0, 57.0, 25.0, 54.0, 239.0, 393.0, 123.0, 46.0, 4.0], \"type\": \"scatter\", \"uid\": \"d581c668-be4e-11e8-95c1-0242ac11000e\"}, {\"mode\": \"lines\", \"name\": \"estimated revenue\", \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [32.099999999999994, 88.2, 44.0, 113.7, 78.0, 392.5, 166.4, 30.4, 32.099999999999994, 231.0, 78.0, 52.5, 95.0, 40.599999999999994, 103.5, 61.0, 142.6, 139.2, 20.2, 214.0, 197.0, 180.0, 78.0, 129.0, 38.9, 282.0, 265.0, 248.0, 112.0, 61.0], \"type\": \"scatter\", \"uid\": \"d581cad2-be4e-11e8-95c1-0242ac11000e\"}], {}, {\"showLink\": true, \"linkText\": \"Export to plot.ly\"})});</script>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from plotly.offline import iplot, init_notebook_mode\n",
+    "init_notebook_mode(connected=True)\n",
+    "from graph import trace_values, m_b_trace, plot\n",
+    "\n",
+    "if x_values and y_values:\n",
+    "    movies_trace = trace_values(x_values, y_values, text=titles, name='movie data')\n",
+    "    regression_trace = m_b_trace(1.7, 10, x_values, name='estimated revenue')\n",
+    "    regression_trace.update({'mode':'lines'})\n",
+    "    plot([movies_trace, regression_trace])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Calculating errors of a regression Line"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now that we have our regression formula, we can move towards calculating the error. We provide a function called `y_actual` that given a data set of `x_values` and `y_values`, finds the actual y value, provided a value of `x`.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def y_actual(x, x_values, y_values):\n",
+    "    combined_values = list(zip(x_values, y_values))\n",
+    "    point_at_x = list(filter(lambda point: point[0] == x,combined_values))[0]\n",
+    "    return point_at_x[1]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "26.0"
+      ]
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "x_values and y_values and y_actual(13, x_values, y_values) # 26.0"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Write a function called `error`, that given a list of `x_values`, and a list of `y_values`, the values `m` and `b` of a regression line, and a value of `x`, returns the error at that x value.  Remember ${\\varepsilon_i} =  y_i - \\overline{y}_i$.  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def error(x_values, y_values, m, b, x):\n",
+    "    return y_actual(x, x_values, y_values) - (m * x + b)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "-6.099999999999994"
+      ]
+     },
+     "execution_count": 23,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "error(x_values, y_values, 1.7, 10, 13) # -6.099999999999994"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now that we have a formula to calculate our errors, write a function called `error_line_trace` that returns a trace of an error at a given point.  So for a given movie budget, it will display the difference between the regression line and the actual movie revenue."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "![](./error-line.png)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Ok, so the function `error_line_trace` takes our dataset of `x_values` as the first argument and `y_values` as the second argument.  It also takes in values of $m$ and $b$ as the next two arguments to represent the regression line we will calculate errors from. Finally, the last argument is the value $x$ it is drawing an error for.\n",
+    "\n",
+    "The return value is a dictionary that represents a trace, and looks like the following:\n",
+    "\n",
+    "```python\n",
+    "{'marker': {'color': 'red'},\n",
+    " 'mode': 'line',\n",
+    " 'name': 'error at 120',\n",
+    " 'x': [120, 120],\n",
+    " 'y': [93.0, 214.0]}\n",
+    "\n",
+    "```\n",
+    "\n",
+    "The trace represents the error line above. The data in `x` and `y` represent the starting point and ending point of the error line. Note that the x value is the same for the starting and ending point, just as it is for each vertical line. It's just the y values that differ - representing the actual value and the expected value. The mode of the trace equals `'line'`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 82,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def error_line_trace(x_values, y_values, m, b, x):\n",
+    "    y = y_actual(x, x_values,  y_values)\n",
+    "    y_hat = m * x + b\n",
+    "    return {'marker':{'color':'red'}, 'mode' : 'lines', 'name':'error at 120', 'x':[x,x], 'y':[y, y_hat]}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'marker': {'color': 'red'},\n",
+       " 'mode': 'lines',\n",
+       " 'name': 'error at 120',\n",
+       " 'x': [120, 120],\n",
+       " 'y': [93.0, 214.0]}"
+      ]
+     },
+     "execution_count": 33,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "error_at_120m = error_line_trace(x_values, y_values, 1.7, 10, 120)\n",
+    "\n",
+    "# {'marker': {'color': 'red'},\n",
+    "#  'mode': 'line',\n",
+    "#  'name': 'error at 120',\n",
+    "#  'x': [120, 120],\n",
+    "#  'y': [93.0, 214.0]}\n",
+    "error_at_120m"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We just ran the our function to draw a trace of the error for the movie Elysium.  Let's see how it looks."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'title': 'Elysium', 'budget': 120.0, 'domgross': 93.0}"
+      ]
+     },
+     "execution_count": 29,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "scaled_movies[19]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 53,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<script>requirejs.config({paths: { 'plotly': ['https://cdn.plot.ly/plotly-latest.min']},});if(!window.Plotly) {{require(['plotly'],function(plotly) {window.Plotly=plotly;});}}</script>"
+      ],
+      "text/vnd.plotly.v1+html": [
+       "<script>requirejs.config({paths: { 'plotly': ['https://cdn.plot.ly/plotly-latest.min']},});if(!window.Plotly) {{require(['plotly'],function(plotly) {window.Plotly=plotly;});}}</script>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "application/vnd.plotly.v1+json": {
+       "data": [
+        {
+         "mode": "markers",
+         "name": "movie data",
+         "text": [
+          "21 &amp; Over",
+          "Dredd 3D",
+          "12 Years a Slave",
+          "2 Guns",
+          "42",
+          "47 Ronin",
+          "A Good Day to Die Hard",
+          "About Time",
+          "Admission",
+          "After Earth",
+          "American Hustle",
+          "August: Osage County",
+          "Beautiful Creatures",
+          "Blue Jasmine",
+          "Captain Phillips",
+          "Carrie",
+          "Cloudy with a Chance of Meatballs 2",
+          "Despicable Me 2",
+          "Don Jon",
+          "Elysium",
+          "Ender&#39;s Game",
+          "Epic",
+          "Escape from Planet Earth",
+          "Escape Plan",
+          "Evil Dead",
+          "Fast and Furious 6",
+          "Frozen",
+          "G.I. Joe: Retaliation",
+          "Gangster Squad",
+          "Gloria"
+         ],
+         "type": "scatter",
+         "uid": "9d809958-be4c-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          46,
+          20,
+          61,
+          40,
+          225,
+          92,
+          12,
+          13,
+          130,
+          40,
+          25,
+          50,
+          18,
+          55,
+          30,
+          78,
+          76,
+          6,
+          120,
+          110,
+          100,
+          40,
+          70,
+          17,
+          160,
+          150,
+          140,
+          60,
+          30
+         ],
+         "y": [
+          26,
+          13,
+          53,
+          76,
+          95,
+          38,
+          67,
+          15,
+          18,
+          61,
+          148,
+          37,
+          19,
+          33,
+          107,
+          35,
+          120,
+          368,
+          24,
+          93,
+          62,
+          108,
+          57,
+          25,
+          54,
+          239,
+          393,
+          123,
+          46,
+          4
+         ]
+        },
+        {
+         "mode": "lines",
+         "name": "estimated revenue",
+         "type": "scatter",
+         "uid": "9d809bf6-be4c-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          46,
+          20,
+          61,
+          40,
+          225,
+          92,
+          12,
+          13,
+          130,
+          40,
+          25,
+          50,
+          18,
+          55,
+          30,
+          78,
+          76,
+          6,
+          120,
+          110,
+          100,
+          40,
+          70,
+          17,
+          160,
+          150,
+          140,
+          60,
+          30
+         ],
+         "y": [
+          32.099999999999994,
+          88.2,
+          44,
+          113.7,
+          78,
+          392.5,
+          166.4,
+          30.4,
+          32.099999999999994,
+          231,
+          78,
+          52.5,
+          95,
+          40.599999999999994,
+          103.5,
+          61,
+          142.6,
+          139.2,
+          20.2,
+          214,
+          197,
+          180,
+          78,
+          129,
+          38.9,
+          282,
+          265,
+          248,
+          112,
+          61
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 120",
+         "type": "scatter",
+         "uid": "9d809dcc-be4c-11e8-95c1-0242ac11000e",
+         "x": [
+          120,
+          120
+         ],
+         "y": [
+          93,
+          214
+         ]
+        }
+       ],
+       "layout": {}
+      },
+      "text/html": [
+       "<div id=\"5eb3b5bd-2e85-4212-ab6d-2cb1be545dcf\" style=\"height: 525px; width: 100%;\" class=\"plotly-graph-div\"></div><script type=\"text/javascript\">require([\"plotly\"], function(Plotly) { window.PLOTLYENV=window.PLOTLYENV || {};window.PLOTLYENV.BASE_URL=\"https://plot.ly\";Plotly.newPlot(\"5eb3b5bd-2e85-4212-ab6d-2cb1be545dcf\", [{\"mode\": \"markers\", \"name\": \"movie data\", \"text\": [\"21 &amp; Over\", \"Dredd 3D\", \"12 Years a Slave\", \"2 Guns\", \"42\", \"47 Ronin\", \"A Good Day to Die Hard\", \"About Time\", \"Admission\", \"After Earth\", \"American Hustle\", \"August: Osage County\", \"Beautiful Creatures\", \"Blue Jasmine\", \"Captain Phillips\", \"Carrie\", \"Cloudy with a Chance of Meatballs 2\", \"Despicable Me 2\", \"Don Jon\", \"Elysium\", \"Ender&#39;s Game\", \"Epic\", \"Escape from Planet Earth\", \"Escape Plan\", \"Evil Dead\", \"Fast and Furious 6\", \"Frozen\", \"G.I. Joe: Retaliation\", \"Gangster Squad\", \"Gloria\"], \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [26.0, 13.0, 53.0, 76.0, 95.0, 38.0, 67.0, 15.0, 18.0, 61.0, 148.0, 37.0, 19.0, 33.0, 107.0, 35.0, 120.0, 368.0, 24.0, 93.0, 62.0, 108.0, 57.0, 25.0, 54.0, 239.0, 393.0, 123.0, 46.0, 4.0], \"type\": \"scatter\", \"uid\": \"9d85f038-be4c-11e8-95c1-0242ac11000e\"}, {\"mode\": \"lines\", \"name\": \"estimated revenue\", \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [32.099999999999994, 88.2, 44.0, 113.7, 78.0, 392.5, 166.4, 30.4, 32.099999999999994, 231.0, 78.0, 52.5, 95.0, 40.599999999999994, 103.5, 61.0, 142.6, 139.2, 20.2, 214.0, 197.0, 180.0, 78.0, 129.0, 38.9, 282.0, 265.0, 248.0, 112.0, 61.0], \"type\": \"scatter\", \"uid\": \"9d85f768-be4c-11e8-95c1-0242ac11000e\"}, {\"marker\": {\"color\": \"red\"}, \"mode\": \"lines\", \"name\": \"error at 120\", \"x\": [120, 120], \"y\": [93.0, 214.0], \"type\": \"scatter\", \"uid\": \"9d85f8c6-be4c-11e8-95c1-0242ac11000e\"}], {}, {\"showLink\": true, \"linkText\": \"Export to plot.ly\"})});</script>"
+      ],
+      "text/vnd.plotly.v1+html": [
+       "<div id=\"5eb3b5bd-2e85-4212-ab6d-2cb1be545dcf\" style=\"height: 525px; width: 100%;\" class=\"plotly-graph-div\"></div><script type=\"text/javascript\">require([\"plotly\"], function(Plotly) { window.PLOTLYENV=window.PLOTLYENV || {};window.PLOTLYENV.BASE_URL=\"https://plot.ly\";Plotly.newPlot(\"5eb3b5bd-2e85-4212-ab6d-2cb1be545dcf\", [{\"mode\": \"markers\", \"name\": \"movie data\", \"text\": [\"21 &amp; Over\", \"Dredd 3D\", \"12 Years a Slave\", \"2 Guns\", \"42\", \"47 Ronin\", \"A Good Day to Die Hard\", \"About Time\", \"Admission\", \"After Earth\", \"American Hustle\", \"August: Osage County\", \"Beautiful Creatures\", \"Blue Jasmine\", \"Captain Phillips\", \"Carrie\", \"Cloudy with a Chance of Meatballs 2\", \"Despicable Me 2\", \"Don Jon\", \"Elysium\", \"Ender&#39;s Game\", \"Epic\", \"Escape from Planet Earth\", \"Escape Plan\", \"Evil Dead\", \"Fast and Furious 6\", \"Frozen\", \"G.I. Joe: Retaliation\", \"Gangster Squad\", \"Gloria\"], \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [26.0, 13.0, 53.0, 76.0, 95.0, 38.0, 67.0, 15.0, 18.0, 61.0, 148.0, 37.0, 19.0, 33.0, 107.0, 35.0, 120.0, 368.0, 24.0, 93.0, 62.0, 108.0, 57.0, 25.0, 54.0, 239.0, 393.0, 123.0, 46.0, 4.0], \"type\": \"scatter\", \"uid\": \"9d85f038-be4c-11e8-95c1-0242ac11000e\"}, {\"mode\": \"lines\", \"name\": \"estimated revenue\", \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [32.099999999999994, 88.2, 44.0, 113.7, 78.0, 392.5, 166.4, 30.4, 32.099999999999994, 231.0, 78.0, 52.5, 95.0, 40.599999999999994, 103.5, 61.0, 142.6, 139.2, 20.2, 214.0, 197.0, 180.0, 78.0, 129.0, 38.9, 282.0, 265.0, 248.0, 112.0, 61.0], \"type\": \"scatter\", \"uid\": \"9d85f768-be4c-11e8-95c1-0242ac11000e\"}, {\"marker\": {\"color\": \"red\"}, \"mode\": \"lines\", \"name\": \"error at 120\", \"x\": [120, 120], \"y\": [93.0, 214.0], \"type\": \"scatter\", \"uid\": \"9d85f8c6-be4c-11e8-95c1-0242ac11000e\"}], {}, {\"showLink\": true, \"linkText\": \"Export to plot.ly\"})});</script>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from plotly.offline import iplot, init_notebook_mode\n",
+    "init_notebook_mode(connected=True)\n",
+    "from graph import trace_values, m_b_trace, plot\n",
+    "#\n",
+    "\n",
+    "\n",
+    "\n",
+    "if x_values and y_values:\n",
+    "    movies_trace = trace_values(x_values, y_values, text=titles, name='movie data')\n",
+    "    regression_trace = m_b_trace(1.7, 10, x_values, name='estimated revenue')\n",
+    "    error_at_120m.update({'mode':'lines'})\n",
+    "    regression_trace.update({'mode':'lines'})\n",
+    "    movies_trace.update({'mode':'markers'})\n",
+    "    plot([movies_trace, regression_trace, error_at_120m ])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "From there, we can write a function called `error_line_traces`, that takes in a list of `x_values` as an argument, `y_values` as an argument, and returns a list of traces for every x value provided."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 119,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def error_line_traces(x_values, y_values, m, b):\n",
+    "    traces = list(map(lambda x: error_line_trace(x_values, y_values, m ,b ,x), x_values))\n",
+    "    for trace in traces:\n",
+    "        trace.update({'name':'error at '+str(round(trace['x'][0])), 'mode':'lines'})\n",
+    "    return traces"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 120,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "x_values = list(map(lambda movie: movie['budget'], scaled_movies))\n",
+    "y_values = list(map(lambda movie: movie['domgross'], scaled_movies))\n",
+    "errors_for_regression = error_line_traces(x_values, y_values, 1.7, 10)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 113,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "30"
+      ]
+     },
+     "execution_count": 113,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "errors_for_regression and len(errors_for_regression) # 30"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 115,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "[{'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 13',\n",
+       "  'x': [13.0, 13.0],\n",
+       "  'y': [26.0, 32.099999999999994]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 46',\n",
+       "  'x': [46.0, 46.0],\n",
+       "  'y': [13.0, 88.2]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 20',\n",
+       "  'x': [20.0, 20.0],\n",
+       "  'y': [53.0, 44.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 61',\n",
+       "  'x': [61.0, 61.0],\n",
+       "  'y': [76.0, 113.7]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 40',\n",
+       "  'x': [40.0, 40.0],\n",
+       "  'y': [95.0, 78.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 225',\n",
+       "  'x': [225.0, 225.0],\n",
+       "  'y': [38.0, 392.5]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 92',\n",
+       "  'x': [92.0, 92.0],\n",
+       "  'y': [67.0, 166.4]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 12',\n",
+       "  'x': [12.0, 12.0],\n",
+       "  'y': [15.0, 30.4]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 13',\n",
+       "  'x': [13.0, 13.0],\n",
+       "  'y': [26.0, 32.099999999999994]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 130',\n",
+       "  'x': [130.0, 130.0],\n",
+       "  'y': [61.0, 231.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 40',\n",
+       "  'x': [40.0, 40.0],\n",
+       "  'y': [95.0, 78.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 25',\n",
+       "  'x': [25.0, 25.0],\n",
+       "  'y': [37.0, 52.5]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 50',\n",
+       "  'x': [50.0, 50.0],\n",
+       "  'y': [19.0, 95.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 18',\n",
+       "  'x': [18.0, 18.0],\n",
+       "  'y': [33.0, 40.599999999999994]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 55',\n",
+       "  'x': [55.0, 55.0],\n",
+       "  'y': [107.0, 103.5]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 30',\n",
+       "  'x': [30.0, 30.0],\n",
+       "  'y': [35.0, 61.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 78',\n",
+       "  'x': [78.0, 78.0],\n",
+       "  'y': [120.0, 142.6]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 76',\n",
+       "  'x': [76.0, 76.0],\n",
+       "  'y': [368.0, 139.2]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 6',\n",
+       "  'x': [6.0, 6.0],\n",
+       "  'y': [24.0, 20.2]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 120',\n",
+       "  'x': [120.0, 120.0],\n",
+       "  'y': [93.0, 214.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 110',\n",
+       "  'x': [110.0, 110.0],\n",
+       "  'y': [62.0, 197.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 100',\n",
+       "  'x': [100.0, 100.0],\n",
+       "  'y': [108.0, 180.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 40',\n",
+       "  'x': [40.0, 40.0],\n",
+       "  'y': [95.0, 78.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 70',\n",
+       "  'x': [70.0, 70.0],\n",
+       "  'y': [25.0, 129.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 17',\n",
+       "  'x': [17.0, 17.0],\n",
+       "  'y': [54.0, 38.9]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 160',\n",
+       "  'x': [160.0, 160.0],\n",
+       "  'y': [239.0, 282.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 150',\n",
+       "  'x': [150.0, 150.0],\n",
+       "  'y': [393.0, 265.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 140',\n",
+       "  'x': [140.0, 140.0],\n",
+       "  'y': [123.0, 248.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 60',\n",
+       "  'x': [60.0, 60.0],\n",
+       "  'y': [46.0, 112.0]},\n",
+       " {'marker': {'color': 'red'},\n",
+       "  'mode': 'lines',\n",
+       "  'name': 'error at 30',\n",
+       "  'x': [30.0, 30.0],\n",
+       "  'y': [35.0, 61.0]}]"
+      ]
+     },
+     "execution_count": 115,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "x_values = list(map(lambda movie: movie['budget'], scaled_movies))\n",
+    "y_values = list(map(lambda movie: movie['domgross'], scaled_movies))\n",
+    "errors_for_regression\n",
+    "# {'marker': {'color': 'red'},\n",
+    "#  'mode': 'line',\n",
+    "#  'name': 'error at 30.0',\n",
+    "#  'x': [30.0, 30.0],\n",
+    "#  'y': [35.0, 61.0]}\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 122,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<script>requirejs.config({paths: { 'plotly': ['https://cdn.plot.ly/plotly-latest.min']},});if(!window.Plotly) {{require(['plotly'],function(plotly) {window.Plotly=plotly;});}}</script>"
+      ],
+      "text/vnd.plotly.v1+html": [
+       "<script>requirejs.config({paths: { 'plotly': ['https://cdn.plot.ly/plotly-latest.min']},});if(!window.Plotly) {{require(['plotly'],function(plotly) {window.Plotly=plotly;});}}</script>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "application/vnd.plotly.v1+json": {
+       "data": [
+        {
+         "mode": "markers",
+         "name": "movie data",
+         "text": [
+          "21 &amp; Over",
+          "Dredd 3D",
+          "12 Years a Slave",
+          "2 Guns",
+          "42",
+          "47 Ronin",
+          "A Good Day to Die Hard",
+          "About Time",
+          "Admission",
+          "After Earth",
+          "American Hustle",
+          "August: Osage County",
+          "Beautiful Creatures",
+          "Blue Jasmine",
+          "Captain Phillips",
+          "Carrie",
+          "Cloudy with a Chance of Meatballs 2",
+          "Despicable Me 2",
+          "Don Jon",
+          "Elysium",
+          "Ender&#39;s Game",
+          "Epic",
+          "Escape from Planet Earth",
+          "Escape Plan",
+          "Evil Dead",
+          "Fast and Furious 6",
+          "Frozen",
+          "G.I. Joe: Retaliation",
+          "Gangster Squad",
+          "Gloria"
+         ],
+         "type": "scatter",
+         "uid": "bc92c8b8-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          46,
+          20,
+          61,
+          40,
+          225,
+          92,
+          12,
+          13,
+          130,
+          40,
+          25,
+          50,
+          18,
+          55,
+          30,
+          78,
+          76,
+          6,
+          120,
+          110,
+          100,
+          40,
+          70,
+          17,
+          160,
+          150,
+          140,
+          60,
+          30
+         ],
+         "y": [
+          26,
+          13,
+          53,
+          76,
+          95,
+          38,
+          67,
+          15,
+          18,
+          61,
+          148,
+          37,
+          19,
+          33,
+          107,
+          35,
+          120,
+          368,
+          24,
+          93,
+          62,
+          108,
+          57,
+          25,
+          54,
+          239,
+          393,
+          123,
+          46,
+          4
+         ]
+        },
+        {
+         "mode": "lines",
+         "name": "estimated revenue",
+         "type": "scatter",
+         "uid": "bc92cb10-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          46,
+          20,
+          61,
+          40,
+          225,
+          92,
+          12,
+          13,
+          130,
+          40,
+          25,
+          50,
+          18,
+          55,
+          30,
+          78,
+          76,
+          6,
+          120,
+          110,
+          100,
+          40,
+          70,
+          17,
+          160,
+          150,
+          140,
+          60,
+          30
+         ],
+         "y": [
+          32.099999999999994,
+          88.2,
+          44,
+          113.7,
+          78,
+          392.5,
+          166.4,
+          30.4,
+          32.099999999999994,
+          231,
+          78,
+          52.5,
+          95,
+          40.599999999999994,
+          103.5,
+          61,
+          142.6,
+          139.2,
+          20.2,
+          214,
+          197,
+          180,
+          78,
+          129,
+          38.9,
+          282,
+          265,
+          248,
+          112,
+          61
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 13",
+         "type": "scatter",
+         "uid": "bc92cc78-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          13
+         ],
+         "y": [
+          26,
+          32.099999999999994
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 46",
+         "type": "scatter",
+         "uid": "bc92ce44-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          46,
+          46
+         ],
+         "y": [
+          13,
+          88.2
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 20",
+         "type": "scatter",
+         "uid": "bc92cfe8-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          20,
+          20
+         ],
+         "y": [
+          53,
+          44
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 61",
+         "type": "scatter",
+         "uid": "bc92d196-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          61,
+          61
+         ],
+         "y": [
+          76,
+          113.7
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 40",
+         "type": "scatter",
+         "uid": "bc92d2a4-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          40,
+          40
+         ],
+         "y": [
+          95,
+          78
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 225",
+         "type": "scatter",
+         "uid": "bc92d3b2-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          225,
+          225
+         ],
+         "y": [
+          38,
+          392.5
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 92",
+         "type": "scatter",
+         "uid": "bc92d4ac-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          92,
+          92
+         ],
+         "y": [
+          67,
+          166.4
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 12",
+         "type": "scatter",
+         "uid": "bc92d5b0-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          12,
+          12
+         ],
+         "y": [
+          15,
+          30.4
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 13",
+         "type": "scatter",
+         "uid": "bc92d6b4-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          13,
+          13
+         ],
+         "y": [
+          26,
+          32.099999999999994
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 130",
+         "type": "scatter",
+         "uid": "bc92d7ae-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          130,
+          130
+         ],
+         "y": [
+          61,
+          231
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 40",
+         "type": "scatter",
+         "uid": "bc92d8a8-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          40,
+          40
+         ],
+         "y": [
+          95,
+          78
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 25",
+         "type": "scatter",
+         "uid": "bc92d9ac-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          25,
+          25
+         ],
+         "y": [
+          37,
+          52.5
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 50",
+         "type": "scatter",
+         "uid": "bc92daa6-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          50,
+          50
+         ],
+         "y": [
+          19,
+          95
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 18",
+         "type": "scatter",
+         "uid": "bc92dbaa-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          18,
+          18
+         ],
+         "y": [
+          33,
+          40.599999999999994
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 55",
+         "type": "scatter",
+         "uid": "bc92dd3a-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          55,
+          55
+         ],
+         "y": [
+          107,
+          103.5
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 30",
+         "type": "scatter",
+         "uid": "bc92de34-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          30,
+          30
+         ],
+         "y": [
+          35,
+          61
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 78",
+         "type": "scatter",
+         "uid": "bc92df24-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          78,
+          78
+         ],
+         "y": [
+          120,
+          142.6
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 76",
+         "type": "scatter",
+         "uid": "bc92e014-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          76,
+          76
+         ],
+         "y": [
+          368,
+          139.2
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 6",
+         "type": "scatter",
+         "uid": "bc92e104-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          6,
+          6
+         ],
+         "y": [
+          24,
+          20.2
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 120",
+         "type": "scatter",
+         "uid": "bc92e1fe-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          120,
+          120
+         ],
+         "y": [
+          93,
+          214
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 110",
+         "type": "scatter",
+         "uid": "bc92e2ee-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          110,
+          110
+         ],
+         "y": [
+          62,
+          197
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 100",
+         "type": "scatter",
+         "uid": "bc92e3de-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          100,
+          100
+         ],
+         "y": [
+          108,
+          180
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 40",
+         "type": "scatter",
+         "uid": "bc92e4ce-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          40,
+          40
+         ],
+         "y": [
+          95,
+          78
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 70",
+         "type": "scatter",
+         "uid": "bc92e5c8-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          70,
+          70
+         ],
+         "y": [
+          25,
+          129
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 17",
+         "type": "scatter",
+         "uid": "bc92e6b8-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          17,
+          17
+         ],
+         "y": [
+          54,
+          38.9
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 160",
+         "type": "scatter",
+         "uid": "bc92e7a8-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          160,
+          160
+         ],
+         "y": [
+          239,
+          282
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 150",
+         "type": "scatter",
+         "uid": "bc92e898-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          150,
+          150
+         ],
+         "y": [
+          393,
+          265
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 140",
+         "type": "scatter",
+         "uid": "bc92e992-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          140,
+          140
+         ],
+         "y": [
+          123,
+          248
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 60",
+         "type": "scatter",
+         "uid": "bc92ea78-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          60,
+          60
+         ],
+         "y": [
+          46,
+          112
+         ]
+        },
+        {
+         "marker": {
+          "color": "red"
+         },
+         "mode": "lines",
+         "name": "error at 30",
+         "type": "scatter",
+         "uid": "bc92eb72-be4f-11e8-95c1-0242ac11000e",
+         "x": [
+          30,
+          30
+         ],
+         "y": [
+          35,
+          61
+         ]
+        }
+       ],
+       "layout": {}
+      },
+      "text/html": [
+       "<div id=\"13ca5a68-a13d-43b8-b0a1-374d94a60cc3\" style=\"height: 525px; width: 100%;\" class=\"plotly-graph-div\"></div><script type=\"text/javascript\">require([\"plotly\"], function(Plotly) { window.PLOTLYENV=window.PLOTLYENV || {};window.PLOTLYENV.BASE_URL=\"https://plot.ly\";Plotly.newPlot(\"13ca5a68-a13d-43b8-b0a1-374d94a60cc3\", [{\"mode\": \"markers\", \"name\": \"movie data\", \"text\": [\"21 &amp; Over\", \"Dredd 3D\", \"12 Years a Slave\", \"2 Guns\", \"42\", \"47 Ronin\", \"A Good Day to Die Hard\", \"About Time\", \"Admission\", \"After Earth\", \"American Hustle\", \"August: Osage County\", \"Beautiful Creatures\", \"Blue Jasmine\", \"Captain Phillips\", \"Carrie\", \"Cloudy with a Chance of Meatballs 2\", \"Despicable Me 2\", \"Don Jon\", \"Elysium\", \"Ender&#39;s Game\", \"Epic\", \"Escape from Planet Earth\", \"Escape Plan\", \"Evil Dead\", \"Fast and Furious 6\", \"Frozen\", \"G.I. Joe: Retaliation\", \"Gangster Squad\", \"Gloria\"], \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [26.0, 13.0, 53.0, 76.0, 95.0, 38.0, 67.0, 15.0, 18.0, 61.0, 148.0, 37.0, 19.0, 33.0, 107.0, 35.0, 120.0, 368.0, 24.0, 93.0, 62.0, 108.0, 57.0, 25.0, 54.0, 239.0, 393.0, 123.0, 46.0, 4.0], \"type\": \"scatter\", \"uid\": \"bca95d94-be4f-11e8-95c1-0242ac11000e\"}, {\"mode\": \"lines\", \"name\": \"estimated revenue\", \"x\": [13.0, 46.0, 20.0, 61.0, 40.0, 225.0, 92.0, 12.0, 13.0, 130.0, 40.0, 25.0, 50.0, 18.0, 55.0, 30.0, 78.0, 76.0, 6.0, 120.0, 110.0, 100.0, 40.0, 70.0, 17.0, 160.0, 150.0, 140.0, 60.0, 30.0], \"y\": [32.099999999999994, 88.2, 44.0, 113.7, 78.0, 392.5, 166.4, 30.4, 32.099999999999994, 231.0, 78.0, 52.5, 95.0, 40.599999999999994, 103.5, 61.0, 142.6, 139.2, 20.2, 214.0, 197.0, 180.0, 78.0, 129.0, 38.9, 282.0, 265.0, 248.0, 112.0, 61.0], \"type\": \"scatter\", \"uid\": \"bca95fd8-be4f-11e8-95c1-0242ac11000e\"}, {\"marker\": {\"color\": \"red\"}, \"mode\": \"lines\", \"name\": \"error at 13\", \"x\": [13.0, 13.0], \"y\": [26.0, 32.099999999999994], \"type\": \"scatter\", \"uid\": \"bca96140-be4f-11e8-95c1-0242ac11000e\"}, {\"marker\": {\"color\": \"red\"}, \"mode\": \"lines\", \"name\": \"error at 46\", \"x\": [46.0, 46.0], \"y\": [13.0, 88.2], \"type\": \"scatter\", \"uid\": \"bca96276-be4f-11e8-95c1-0242ac11000e\"}, {\"marker\": {\"color\": \"red\"}, \"mode\": \"lines\", \"name\": \"error at 20\", \"x\": [20.0, 20.0], \"y\": [53.0, 44.0], \"type\"
